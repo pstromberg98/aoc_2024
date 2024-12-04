@@ -28,24 +28,20 @@ int main() {
 
 	int sum = 0;
 	for (auto report : reports) {
-		for (auto level : report) {
-			std::cout << level << " ";
-		}
-
-
 		bool safe = is_safe(report);
 		if (safe) {
 			sum++;
 		}
 	}
 
+	std::cout << "result: " << sum << std::endl;
+
 	return 0;
 }
 
 bool is_safe(Report report) {
 	bool sincrease = report[1] > report[0];
-	for (int i = 1; i < report.size() - 1; i++) {
-		int prev = report[i - 1];
+	for (int i = 0; i < report.size() - 1; i++) {
 		int current = report[i];
 		int next = report[i + 1];
 
@@ -54,10 +50,9 @@ bool is_safe(Report report) {
 			return false;	
 		}
 
-		int leftdiff = std::abs(prev - current);
-		int rightdiff = std::abs(next - current);
+		int diff = std::abs(next - current);
 		
-		if (leftdiff < 1 || leftdiff > 3 || rightdiff < 1 || rightdiff > 3) {
+		if (diff < 1 || diff > 3) {
 			return false;
 		}
 	}
