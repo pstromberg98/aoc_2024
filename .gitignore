@@ -1,2 +1,5 @@
 */program
 */build/program
+**/lexer.yy.cpp
+**/parser.tab.cpp
+**/parser.tab.hpp
