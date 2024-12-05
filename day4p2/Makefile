@@ -6,5 +6,5 @@ build/program: main.cpp build
 build:
 	mkdir build
 
-run: build/program build/solution2
-	./build/solution2 < input.txt
+run: build/program
+	./build/program < input.txt
