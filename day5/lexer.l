@@ -7,6 +7,7 @@
 	
 	extern std::unordered_set<int> keys;
 	extern std::unordered_map<int, std::vector<int>> rules;
+	extern std::vector<std::vector<int>> pages;
 %}
 
 %%
@@ -32,6 +33,20 @@
 				}
 
 				rules[key].push_back(value);
+			}
+[0-9,]+\n		{
+				std::string input(yytext);
+				std::smatch match;
+				std::regex r("[0-9]+");
+
+				std::vector<int> page;
+				while(regex_search(input, match, r)) {
+					page.push_back(stoi(match[0]));
+					input = match.suffix();
+				}
+
+				//std::reverse(page.begin(), page.end());
+				pages.push_back(page);
 			}
 .			{}
 \n			{}
