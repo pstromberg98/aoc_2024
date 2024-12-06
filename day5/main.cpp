@@ -1,208 +1,115 @@
 #include <vector>
-#include <unordered_map>
 #include <unordered_set>
+#include <unordered_map>
 #include <iostream>
-#include "node.h"
+#include <string>
 
 extern int yylex();
 
-struct RuleSequence {
-	int seqidx = 0;
-	std::vector<int>* sequence;
-	std::vector<int>* state;
-};
-
 std::unordered_set<int> keys;
 std::unordered_map<int, std::vector<int>> rules;
-std::vector<RuleSequence*> sequences;
-std::vector<std::vector<int>> pages;
+std::vector<std::vector<int>> updates;
+std::unordered_map<std::string, bool> cache;
 
-void expand(Node* n, bool first=false);
-void traverse(Node* root, std::vector<Node*>& leaves);
-void sequence(std::vector<Node*>& leaves);
-bool push_to_sequence(RuleSequence* rseq, int value);
-
-std::vector<Node*> roots;
-
-// sequence
-// state
-// 1. we can add to state
-// 2. we must then check state
-// 3. if check fails, does not follow rules
-// 4. state index
-//
-// add (n) to state if seq contains()
+bool search_by_left(int current, int proposed, std::vector<int>& input, std::unordered_set<int> visited={});
+bool contains(std::vector<int>& input, int val);
 
 int main() {
 	yylex();
 
-	std::cout << "expansions needed: " << keys.size() << std::endl;
-	Node* node = create_node();
-	for (auto key : keys) {
-		Node* node = create_node();
-		node->number = key;
-		expand(node, true);
-		roots.push_back(node);
-	}
-
-	std::cout << "expanding done" << std::endl;
-
-	for (auto root : roots) {
-		std::vector<Node*> leaves;
-		traverse(root, leaves);
-		sequence(leaves);
-	}
-
-	std::vector<int> validpages;
-	int pageid = 0;
-	for (auto page : pages) {
-		bool valid = true;
-		for (auto value : page) {
-			int seqid = 0;
-			for (auto s : sequences) {
-#ifdef DEBUG
-				std::cout << "SEQUENCE: " << seqid << " VALUE: " << value << std::endl;
-#endif
-				valid = push_to_sequence(s, value);
-				if (!valid) {
+	int updateid = 0;
+	std::vector<int> updateids;
+	for (auto pages : updates) {
+		bool invalid = false;
+		for (int i = 0; i < pages.size(); i++) {
+			int current = pages[i];
+			for (int j = i + 1; j < pages.size(); j++) {
+				int proposed = pages[j];
+				if (!search_by_left(current, proposed, pages)) {
+					std::cout << "invalid!" << std::endl;
+					invalid = true;
 					break;
 				}
-
-				seqid++;
-
-#ifdef DEBUG
-				std::cout << std::endl;
-				std::cout << std::endl;
-#endif
+				
+				if (invalid) {
+					break;
+				}
 			}
 
-			if (!valid) {
+			if (invalid) {
 				break;
 			}
 		}
 
-		if (valid) {
-			validpages.push_back(pageid);
+		if (!invalid) {
+			updateids.push_back(updateid);
 		}
 
-		for (auto s : sequences) {
-			s->seqidx = 0;
-			s->state = new std::vector<int>();
-		}
+		cache = std::unordered_map<std::string, bool>();
 
-		pageid++;
+		updateid++;
 	}
 
 	int sum = 0;
-	for (auto pgid : validpages) {
-		auto values = pages[pgid];
-		auto mid = values[((values.size() + 1) / 2) - 1];
-		std::cout << "page id: " << pgid << std::endl;
+	for (auto id : updateids) {
+		auto pages = updates[id];
+		int mid = pages[((pages.size() + 1) / 2) - 1];
 		sum += mid;
 	}
 
-	std::cout << "result: " << sum << std::endl;
+	std::cout << "successes: " << updateids.size() << std::endl;
+	std::cout << "sum: " << sum << std::endl;
 
-	/*
-	for (auto seq : sequences) {
-		for (auto n : seq) {
-			std::cout << n << "-";
-		}
-		std::cout << std::endl;
-	}
-	*/
-
-	free_nodes();
 	return 0;
 }
 
-bool push_to_sequence(RuleSequence* rseq, int value) {
-	int order = -1;
-	int i = 0;
+bool search_by_left(int current, int proposed, std::vector<int>& input, std::unordered_set<int> visited) {
 
-	for (int sidx = 0; sidx < rseq->sequence->size(); sidx++) {
-		int s = rseq->sequence->at(sidx);
-		if (s == value) {
-			order = i;
-			break;
+	if (rules.find(proposed) != rules.end()) {
+		std::vector<int> rule = rules[proposed];
+		for (auto r : rule) {
+			if (!contains(input, r)) {
+				continue;
+			}
+
+			std::string ckey = std::to_string(current) + "-" + std::to_string(r) + "-" + std::to_string((long)&input);
+
+			if (cache.find(ckey) != cache.end() && false) {
+				// std::cout << "hit: " << ckey << std::endl;
+				return cache[ckey];
+			}
+
+			if (visited.find(r) == visited.end()) {
+				// std::cout << "checking: " << r << std::endl;
+				if (r == current) {
+					// std::cout << "proposed: " << r << " current: " << current;
+					// cache[ckey] = false;
+					return false;
+				}
+
+				if(!search_by_left(current, r, input, visited)) {
+					// cache[ckey] = false;
+					return false;
+				} else {
+					cache[ckey] = true;
+				}
+			}
 		}
-		i++;
 	}
 
-#ifdef DEBUG
-	std::cout << "order: " << order << std::endl;
-	std::cout << "value: " << value << std::endl;
-	std::cout << "seqidx: " << rseq->seqidx << std::endl;
-	std::cout << "sequence: ";
-	for (int a = 0; a < rseq->sequence->size(); a++) {
-		std::cout << rseq->sequence->at(a) << " ";
-	}
-	std::cout << std::endl;
-#endif
+	std::string cachekey = std::to_string(current) + "-" + std::to_string(proposed);
+	
+	// cache[cachekey] = true;
+	// cache[ckey] = true;
+	return true;
+}
 
-	if (order == -1) {
-		return true;
-	}
-
-	if (order >= rseq->seqidx) {
-		rseq->state->push_back(value);
-		rseq->seqidx++;
-		// std::cout << "new seqidx: " << rseq->seqidx << std::endl;
-		return true;
+bool contains(std::vector<int>& input, int val) {
+	for (auto v : input) {
+		if (v == val) {
+			return true;
+		}
 	}
 
 	return false;
 }
-
-void sequence(std::vector<Node*>& leaves) {
-	for (auto leave : leaves) {
-		Node* n = leave;
-		std::vector<int>* seqs = new std::vector<int>();
-		while (true) {
-			seqs->push_back(n->number);
-			if (!n->hasparent) {
-				break;
-			}
-			n = n->parent;
-		}
-
-		std::reverse(seqs->begin(), seqs->end());
-		RuleSequence* rs = (RuleSequence*)malloc(sizeof(RuleSequence));
-		rs->sequence = seqs;
-		rs->state = new std::vector<int>();
-		sequences.push_back(rs);
-	}
-}
-
-void traverse(Node* root, std::vector<Node*>& leaves) {
-	int ccount = root->children.size();
-	
-	for (int i = 0; i < ccount; i++) {
-		Node* child = root->children[i];
-		traverse(child, leaves);
-	}
-
-	if (ccount == 0) {
-		leaves.push_back(root);
-	}
-}
-
-void expand(Node* n, bool first) {
-	std::vector<int> ckeys = rules[n->number];
-	visited.insert(n->number);
-	for (auto k : ckeys) {
-		Node* child = create_node();
-		child->number = k;
-		child->parent = n;
-		child->hasparent = true;
-
-		n->children.push_back(child);
-
-		expand(child);
-	}
-
-	if (first) {
-		visited.clear();
-	}
-}
-

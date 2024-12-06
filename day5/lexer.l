@@ -7,7 +7,7 @@
 	
 	extern std::unordered_set<int> keys;
 	extern std::unordered_map<int, std::vector<int>> rules;
-	extern std::vector<std::vector<int>> pages;
+	extern std::vector<std::vector<int>> updates;
 %}
 
 %%
@@ -46,7 +46,7 @@
 				}
 
 				//std::reverse(page.begin(), page.end());
-				pages.push_back(page);
+				updates.push_back(page);
 			}
 .			{}
 \n			{}
